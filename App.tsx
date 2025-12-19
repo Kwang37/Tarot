@@ -25,6 +25,7 @@ const App: React.FC = () => {
   const [handGesture, setHandGesture] = useState<GestureType>(GestureType.NONE);
   const [isLoading, setIsLoading] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  // Check if API_KEY exists in process.env (Vercel) or window.aistudio
   const [hasApiKey, setHasApiKey] = useState(!!process.env.API_KEY);
 
   const t = TRANSLATIONS[lang];
@@ -110,9 +111,12 @@ const App: React.FC = () => {
     if (window.aistudio?.openSelectKey) {
       // @ts-ignore
       await window.aistudio.openSelectKey();
-      setHasApiKey(true); // Assume success per guidelines
+      setHasApiKey(true); 
     } else {
-      alert(lang === 'zh' ? "请在 Vercel 环境变量中设置 API_KEY。" : "Please set API_KEY in Vercel environment variables.");
+      const msg = lang === 'zh' 
+        ? "如果你是管理员，请在 Vercel 项目设置的 Environment Variables 中添加 API_KEY 变量并重新部署。" 
+        : "If you are the admin, please add API_KEY to Environment Variables in Vercel settings and redeploy.";
+      alert(msg);
     }
   };
 
@@ -236,29 +240,34 @@ const App: React.FC = () => {
             
             <div className="space-y-8">
               {!hasApiKey && (
-                <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex flex-col gap-3">
+                <div className="p-6 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex flex-col gap-4">
                   <div className="text-orange-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
-                    ⚠️ {lang === 'zh' ? '未配置神谕密钥' : 'No Oracle Key Configured'}
+                    ⚠️ {lang === 'zh' ? '神谕连接未就绪' : 'Oracle Connection Not Ready'}
                   </div>
-                  <p className="text-xs opacity-70 leading-relaxed italic">
-                    {lang === 'zh' 
-                      ? '为了获得 AI 解读，请点击下方按钮关联你的 Gemini API 密钥。' 
-                      : 'To receive AI interpretations, link your Gemini API key below.'}
-                  </p>
-                  <button 
-                    onClick={handleSetKey}
-                    className="py-2 px-4 bg-orange-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-orange-600 transition-colors w-fit"
-                  >
-                    {lang === 'zh' ? '配置密钥' : 'Configure Key'}
-                  </button>
-                  <a 
-                    href="https://ai.google.dev/gemini-api/docs/billing" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-[9px] text-cyan-400 underline opacity-60 hover:opacity-100 transition-opacity"
-                  >
-                    {lang === 'zh' ? '计费与项目文档' : 'Billing & Documentation'}
-                  </a>
+                  <div className="text-xs opacity-80 leading-relaxed space-y-2">
+                    <p>{lang === 'zh' ? '检测到环境中缺乏 API_KEY。' : 'No API_KEY detected in the environment.'}</p>
+                    <ol className="list-decimal list-inside space-y-1 opacity-70">
+                      <li>{lang === 'zh' ? '前往 Vercel 项目设置 (Settings)' : 'Go to Vercel Settings'}</li>
+                      <li>{lang === 'zh' ? '添加环境变量 API_KEY' : 'Add Env Variable: API_KEY'}</li>
+                      <li>{lang === 'zh' ? '重新部署 (Redeploy) 项目' : 'Redeploy the project'}</li>
+                    </ol>
+                  </div>
+                  <div className="flex gap-3">
+                    <button 
+                      onClick={handleSetKey}
+                      className="py-2.5 px-6 bg-white/10 hover:bg-white/20 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border border-white/10"
+                    >
+                      {lang === 'zh' ? '尝试手动授权' : 'Try Manual Auth'}
+                    </button>
+                    <a 
+                      href="https://ai.google.dev/gemini-api/docs/billing" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="py-2.5 px-6 bg-cyan-500/20 text-cyan-400 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-cyan-500/30 transition-all"
+                    >
+                      {lang === 'zh' ? '获取密钥指引' : 'Get API Key'}
+                    </a>
+                  </div>
                 </div>
               )}
 
