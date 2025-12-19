@@ -2,17 +2,19 @@
 import { GoogleGenAI } from "@google/genai";
 import { DrawnCard, Orientation, Language } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
-
 export async function interpretReading(
   question: string,
   spreadName: string,
   drawnCards: DrawnCard[],
   lang: Language
 ): Promise<string> {
-  if (!process.env.API_KEY) {
-    return lang === 'zh' ? "错误：缺少 API 密钥。" : "Error: API key missing.";
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    return lang === 'zh' ? "错误：未检测到神谕密钥。请在设置中配置。" : "Error: No Oracle Key detected. Please configure in settings.";
   }
+
+  // Create a new instance right before making the call to ensure it uses the latest key
+  const ai = new GoogleGenAI({ apiKey });
 
   const cardDetails = drawnCards.map((dc, i) => {
     const name = lang === 'zh' ? dc.card.name : dc.card.nameEn;
@@ -37,7 +39,7 @@ export async function interpretReading(
     3. **The Oracle's Verdict** (A single, powerful closing sentence of advice)
 
     LANGUAGE: Write strictly in ${lang === 'zh' ? 'Chinese (Simplified)' : 'English'}.
-    FORMAT: Use clean Markdown with bold headers and bullet points. Make it feel like an ancient prophecy, not a textbook.
+    FORMAT: Use clean Markdown with bold headers and bullet points.
   `;
 
   try {
@@ -51,8 +53,13 @@ export async function interpretReading(
     });
 
     return response.text || (lang === 'zh' ? "神灵保持沉默。" : "The spirits are silent.");
-  } catch (error) {
+  } catch (error: any) {
     console.error("Gemini Error:", error);
-    return lang === 'zh' ? "神秘连接中断了。" : "The mystical connection was interrupted.";
+    if (error?.message?.includes("Requested entity was not found")) {
+      return lang === 'zh' 
+        ? "密钥失效或权限不足。请检查计费项目设置。" 
+        : "Invalid key or insufficient permissions. Please check billing project settings.";
+    }
+    return lang === 'zh' ? "神秘连接中断了，请确保 API 密钥正确且已启用。" : "The mystical connection was interrupted. Ensure API key is correct and enabled.";
   }
 }

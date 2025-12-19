@@ -25,10 +25,23 @@ const App: React.FC = () => {
   const [handGesture, setHandGesture] = useState<GestureType>(GestureType.NONE);
   const [isLoading, setIsLoading] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(!!process.env.API_KEY);
 
   const t = TRANSLATIONS[lang];
   const threeRef = useRef<ThreeSceneHandle>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      // @ts-ignore
+      if (window.aistudio?.hasSelectedApiKey) {
+        // @ts-ignore
+        const selected = await window.aistudio.hasSelectedApiKey();
+        if (selected) setHasApiKey(true);
+      }
+    };
+    checkKey();
+  }, []);
 
   useEffect(() => {
     if (gameState === GameState.DRAWING) {
@@ -92,6 +105,17 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSetKey = async () => {
+    // @ts-ignore
+    if (window.aistudio?.openSelectKey) {
+      // @ts-ignore
+      await window.aistudio.openSelectKey();
+      setHasApiKey(true); // Assume success per guidelines
+    } else {
+      alert(lang === 'zh' ? "请在 Vercel 环境变量中设置 API_KEY。" : "Please set API_KEY in Vercel environment variables.");
+    }
+  };
+
   const detectGesture = (landmarks: any[]): GestureType => {
     const thumbTip = landmarks[4];
     const indexTip = landmarks[8];
@@ -145,27 +169,13 @@ const App: React.FC = () => {
 
   return (
     <div className="relative w-full h-screen bg-black overflow-hidden select-none text-gray-200">
-      
-      {/* Background 3D Scene */}
       <ThreeScene ref={threeRef} onCardConfirmed={handleCardConfirmed} />
 
-      {/* Language Switcher */}
       <div className="absolute top-4 left-4 z-50 flex gap-2">
-        <button 
-          onClick={() => setLang('zh')}
-          className={`px-3 py-1 rounded-md text-xs font-bold border border-white/10 transition-colors ${lang === 'zh' ? 'bg-white text-black shadow-lg' : 'bg-white/5 hover:bg-white/10 opacity-60'}`}
-        >
-          中
-        </button>
-        <button 
-          onClick={() => setLang('en')}
-          className={`px-3 py-1 rounded-md text-xs font-bold border border-white/10 transition-colors ${lang === 'en' ? 'bg-white text-black shadow-lg' : 'bg-white/5 hover:bg-white/10 opacity-60'}`}
-        >
-          EN
-        </button>
+        <button onClick={() => setLang('zh')} className={`px-3 py-1 rounded-md text-xs font-bold border border-white/10 transition-colors ${lang === 'zh' ? 'bg-white text-black shadow-lg' : 'bg-white/5 hover:bg-white/10 opacity-60'}`}>中</button>
+        <button onClick={() => setLang('en')} className={`px-3 py-1 rounded-md text-xs font-bold border border-white/10 transition-colors ${lang === 'en' ? 'bg-white text-black shadow-lg' : 'bg-white/5 hover:bg-white/10 opacity-60'}`}>EN</button>
       </div>
 
-      {/* Camera Preview */}
       <div className={`fixed top-4 right-4 w-40 h-32 glass rounded-lg overflow-hidden transition-opacity z-40 border border-white/20 shadow-2xl ${gameState === GameState.DRAWING ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <video ref={videoRef} className="w-full h-full object-cover mirror scale-x-[-1]" autoPlay muted />
         <div className="absolute bottom-1 left-1 px-1.5 bg-black/70 rounded text-[9px] uppercase font-bold text-cyan-400 tracking-tighter">
@@ -173,7 +183,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Gesture Tutorial Overlay - Reduced to 3 Steps */}
       {showTutorial && (
         <div className="absolute inset-0 bg-black/95 flex items-center justify-center z-[100] p-6 text-center animate-in fade-in duration-500 backdrop-blur-xl">
           <div className="max-w-xl glass p-12 rounded-[4rem] border border-white/20 shadow-[0_0_100px_rgba(255,255,255,0.1)]">
@@ -207,38 +216,52 @@ const App: React.FC = () => {
                 </div>
               </div>
             </div>
-            <button 
-              onClick={dismissTutorial}
-              className="px-16 py-5 bg-white text-black rounded-full text-xs font-bold uppercase tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-2xl"
-            >
-              {t.gotIt}
-            </button>
+            <button onClick={dismissTutorial} className="px-16 py-5 bg-white text-black rounded-full text-xs font-bold uppercase tracking-[0.3em] hover:scale-105 active:scale-95 transition-all shadow-2xl">{t.gotIt}</button>
           </div>
         </div>
       )}
 
-      {/* Intro UI */}
       {gameState === GameState.INTRO && (
         <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 bg-black/40 backdrop-blur-[2px]">
           <h1 className="text-7xl font-serif mb-6 tracking-[0.2em] text-white drop-shadow-[0_0_15px_rgba(255,255,255,0.4)]">{t.title}</h1>
-          <p className="max-w-lg text-xl text-gray-300 mb-12 font-light italic leading-relaxed opacity-80">
-            {t.subtitle}
-          </p>
-          <button 
-            onClick={() => setGameState(GameState.SETUP)}
-            className="px-16 py-5 border border-white/40 rounded-full glass hover:bg-white hover:text-black hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all duration-700 tracking-[0.4em] uppercase text-sm"
-          >
-            {t.enter}
-          </button>
+          <p className="max-w-lg text-xl text-gray-300 mb-12 font-light italic leading-relaxed opacity-80">{t.subtitle}</p>
+          <button onClick={() => setGameState(GameState.SETUP)} className="px-16 py-5 border border-white/40 rounded-full glass hover:bg-white hover:text-black hover:shadow-[0_0_30px_rgba(255,255,255,0.4)] transition-all duration-700 tracking-[0.4em] uppercase text-sm">{t.enter}</button>
         </div>
       )}
 
-      {/* Setup UI */}
       {gameState === GameState.SETUP && (
         <div className="absolute inset-0 flex items-center justify-center p-6 z-10 animate-in fade-in zoom-in-95 duration-700">
-          <div className="max-w-2xl w-full glass p-10 rounded-[2.5rem] shadow-2xl border border-white/10">
+          <div className="max-w-2xl w-full glass p-10 rounded-[2.5rem] shadow-2xl border border-white/10 overflow-y-auto max-h-[90vh]">
             <h2 className="text-4xl font-serif mb-8 text-white border-b border-white/10 pb-6 tracking-wide">{t.intent}</h2>
+            
             <div className="space-y-8">
+              {!hasApiKey && (
+                <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/30 flex flex-col gap-3">
+                  <div className="text-orange-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                    ⚠️ {lang === 'zh' ? '未配置神谕密钥' : 'No Oracle Key Configured'}
+                  </div>
+                  <p className="text-xs opacity-70 leading-relaxed italic">
+                    {lang === 'zh' 
+                      ? '为了获得 AI 解读，请点击下方按钮关联你的 Gemini API 密钥。' 
+                      : 'To receive AI interpretations, link your Gemini API key below.'}
+                  </p>
+                  <button 
+                    onClick={handleSetKey}
+                    className="py-2 px-4 bg-orange-500 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-orange-600 transition-colors w-fit"
+                  >
+                    {lang === 'zh' ? '配置密钥' : 'Configure Key'}
+                  </button>
+                  <a 
+                    href="https://ai.google.dev/gemini-api/docs/billing" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[9px] text-cyan-400 underline opacity-60 hover:opacity-100 transition-opacity"
+                  >
+                    {lang === 'zh' ? '计费与项目文档' : 'Billing & Documentation'}
+                  </a>
+                </div>
+              )}
+
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.3em] mb-3 opacity-40 font-bold">{t.questionLabel}</label>
                 <textarea 
@@ -248,6 +271,7 @@ const App: React.FC = () => {
                   className="w-full bg-white/5 border border-white/10 rounded-2xl p-5 focus:ring-1 focus:ring-white outline-none transition-all h-36 resize-none text-xl font-light tracking-wide text-white placeholder:opacity-20 shadow-inner"
                 />
               </div>
+
               <div>
                 <label className="block text-[10px] uppercase tracking-[0.3em] mb-3 opacity-40 font-bold">{t.chooseSpread}</label>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -263,6 +287,7 @@ const App: React.FC = () => {
                   ))}
                 </div>
               </div>
+
               <button 
                 onClick={() => {
                   if(!question) return alert(lang === 'zh' ? "请输入你的问题。" : "Please enter your question.");
@@ -277,23 +302,19 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Drawing UI - HUD */}
       {gameState === GameState.DRAWING && !showTutorial && (
         <div className="absolute bottom-10 inset-x-0 flex flex-col items-center pointer-events-none animate-in fade-in duration-1000">
            <div className="glass px-8 py-4 rounded-full mb-4 flex items-center gap-10 border border-white/10 shadow-2xl">
             {selectedSpread.slots.map((slot, i) => (
               <div key={i} className={`flex items-center gap-3 transition-all duration-500 ${i < drawnCards.length ? 'text-cyan-400' : 'opacity-20'}`}>
                 <div className={`w-2 h-2 rounded-full ${i === drawnCards.length ? 'bg-white animate-pulse shadow-[0_0_10px_white]' : i < drawnCards.length ? 'bg-cyan-400' : 'bg-white/20'}`} />
-                <span className="text-[10px] uppercase tracking-[0.2em] font-bold">
-                  {lang === 'zh' ? slot : selectedSpread.slotsEn[i]}
-                </span>
+                <span className="text-[10px] uppercase tracking-[0.2em] font-bold">{lang === 'zh' ? slot : selectedSpread.slotsEn[i]}</span>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Reading UI */}
       {gameState === GameState.READING && (
         <div className="absolute inset-0 bg-[#020202]/95 flex flex-col z-50 animate-in slide-in-from-bottom duration-1000 overflow-hidden">
           <div className="flex-1 overflow-y-auto p-8 md:p-16 scroll-smooth custom-scrollbar">
@@ -303,16 +324,12 @@ const App: React.FC = () => {
                 <p className="text-4xl md:text-5xl font-serif text-white italic tracking-tight leading-tight max-w-3xl mx-auto">"{question}"</p>
               </div>
 
-              {/* Card Reveal Area */}
               <div className="flex justify-center gap-10 flex-wrap py-4">
                 {drawnCards.map((dc, i) => (
                   <div key={i} className="text-center group animate-in zoom-in duration-700 delay-[300ms]">
                     <div className="relative mb-6">
                       <div className="absolute -inset-4 bg-white/5 blur-2xl rounded-full scale-0 group-hover:scale-100 transition-transform duration-700" />
-                      <img 
-                        src={dc.card.imageUrl} 
-                        className={`w-40 h-64 object-cover rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/20 transition-all duration-700 group-hover:border-white/50 group-hover:translate-y-[-10px] ${dc.orientation === Orientation.REVERSED ? 'rotate-180' : ''}`}
-                      />
+                      <img src={dc.card.imageUrl} className={`w-40 h-64 object-cover rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.8)] border border-white/20 transition-all duration-700 group-hover:border-white/50 group-hover:translate-y-[-10px] ${dc.orientation === Orientation.REVERSED ? 'rotate-180' : ''}`} />
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-black border border-white/20 px-3 py-1 rounded-full text-[9px] font-bold text-white/80 uppercase tracking-widest shadow-xl backdrop-blur-md">
                         {lang === 'zh' ? selectedSpread.slots[i] : selectedSpread.slotsEn[i]}
                       </div>
@@ -325,7 +342,6 @@ const App: React.FC = () => {
                 ))}
               </div>
 
-              {/* Dynamic Interpretation Section */}
               <div className="relative group max-w-3xl mx-auto">
                 <div className="absolute -inset-1 bg-gradient-to-b from-white/10 to-transparent blur opacity-20" />
                 <div className="relative glass p-10 md:p-14 rounded-[3rem] shadow-2xl border border-white/5 min-h-[300px]">
@@ -335,26 +351,10 @@ const App: React.FC = () => {
                       <div className="text-[10px] uppercase tracking-[0.4em] text-white/40 animate-pulse">{t.consulting}</div>
                     </div>
                   ) : (
-                    <div className="prose prose-invert prose-lg max-w-none 
-                      prose-headings:font-serif prose-headings:font-normal prose-headings:tracking-widest prose-headings:text-white prose-headings:mb-4
-                      prose-p:text-white/70 prose-p:leading-relaxed prose-p:font-light prose-p:mb-6
-                      prose-strong:text-cyan-400 prose-strong:font-bold
-                      prose-li:text-white/60 prose-li:mb-2
-                      animate-in fade-in slide-in-from-top-4 duration-1000 delay-500">
+                    <div className="prose prose-invert prose-lg max-w-none animate-in fade-in slide-in-from-top-4 duration-1000 delay-500">
                       {interpretation.split('\n').map((line, idx) => (
                         <p key={idx} className="mb-4 last:mb-0">
-                          {line.startsWith('**') ? (
-                            <span className="text-white font-serif text-2xl block border-b border-white/5 pb-2 mb-4 mt-8 first:mt-0">
-                              {line.replace(/\*\*/g, '')}
-                            </span>
-                          ) : line.startsWith('- ') || line.startsWith('* ') ? (
-                            <span className="flex gap-3 text-white/70 pl-4 italic border-l border-white/10">
-                              <span className="text-cyan-500 text-sm">•</span>
-                              {line.substring(2)}
-                            </span>
-                          ) : (
-                            line
-                          )}
+                          {line.startsWith('**') ? <span className="text-white font-serif text-2xl block border-b border-white/5 pb-2 mb-4 mt-8 first:mt-0">{line.replace(/\*\*/g, '')}</span> : line.startsWith('- ') || line.startsWith('* ') ? <span className="flex gap-3 text-white/70 pl-4 italic border-l border-white/10"><span className="text-cyan-500 text-sm">•</span>{line.substring(2)}</span> : line}
                         </p>
                       ))}
                     </div>
@@ -363,12 +363,7 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex justify-center pb-24">
-                <button 
-                  onClick={() => window.location.reload()}
-                  className="px-14 py-4 glass rounded-full hover:bg-white/10 border border-white/10 text-[10px] uppercase tracking-[0.5em] text-white/50 hover:text-white transition-all duration-500 shadow-lg"
-                >
-                  {t.return}
-                </button>
+                <button onClick={() => window.location.reload()} className="px-14 py-4 glass rounded-full hover:bg-white/10 border border-white/10 text-[10px] uppercase tracking-[0.5em] text-white/50 hover:text-white transition-all duration-500 shadow-lg">{t.return}</button>
               </div>
             </div>
           </div>
