@@ -1,0 +1,7 @@
+{
+  "name": "Ethereal Tarot: Mystical 3D Hands",
+  "description": "An immersive 3D Tarot reading experience featuring MediaPipe hand gestures, Three.js visuals, and Gemini-powered spiritual interpretations.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
